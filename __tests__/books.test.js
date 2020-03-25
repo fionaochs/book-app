@@ -1,20 +1,65 @@
 require('dotenv').config();
+const { getAuthor, getBook } = require('../db/data-helpers');
 
 const request = require('supertest');
 const app = require('../lib/app');
-const connect = require('../lib/utils/connect');
-const mongoose = require('mongoose');
 
 describe('app routes', () => {
-  beforeAll(() => {
-    connect();
+  it('creates a book', async() => {
+    const author = await getAuthor();
+
+    return request(app)
+      .post('/api/v1/books')
+      .send({
+        authorId: author._id,
+        text: 'test'
+      })
+      .then(res => {
+        expect(res.body).toEqual({
+          _id: expect.any(String),
+          authorId: author._id,
+          text: 'test',
+          __v: 0
+        });
+      });
   });
 
-  beforeEach(() => {
-    return mongoose.connection.dropDatabase();
+  it('gets a book by id', async() => {
+    const author = await getAuthor();
+    const book = await getBook({ authorId: author._id });
+
+    return request(app)
+      .get(`/api/v1/books/${book._id}`)
+      .then(res => {
+        expect(res.body).toEqual({
+          ...book,
+          authorId: author
+        });
+      });
   });
 
-  afterAll(() => {
-    return mongoose.connection.close();
+  it('updates a book by id', async() => {
+    const book = await getBook();
+
+    return request(app)
+      .patch(`/api/v1/books/${book._id}`)
+      .send({ text: 'new text' })
+      .then(res => {
+        expect(res.body).toEqual({
+          ...book,
+          text: 'new text'
+        });
+      });
   });
+
+  it('deletes a book by id', async() => {
+    const book = await getBook();
+
+    return request(app)
+      .delete(`/api/v1/books/${book._id}`)
+      .then(res => {
+        expect(res.body).toEqual(book);
+      });
+  });
+
 });
